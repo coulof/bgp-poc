@@ -1,0 +1,14 @@
+apiVersion: network.harvesterhci.io/v1beta1
+kind: VlanConfig
+metadata:
+  name: bgp-eth2
+spec:
+  clusterNetwork: bgp
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/hostname: hv-01
+  uplink:
+    nics:
+      - eth2
+    bondMode: active-backup
+    miimon: 100

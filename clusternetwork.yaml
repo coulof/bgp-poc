@@ -1,0 +1,7 @@
+apiVersion: network.harvesterhci.io/v1beta1
+kind: ClusterNetwork
+metadata:
+  name: bgp
+spec:
+  enable: true
+  description: "BGP peering network on eth2"

@@ -1,0 +1,13 @@
+apiVersion: network.harvesterhci.io/v1beta1
+kind: HostNetworkConfig
+metadata:
+  name: bgp-peering
+spec:
+  clusterNetwork: bgp
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/hostname: hv-01
+  vlanID: 100
+  mode: static
+  ips:
+    hv-01: "172.16.1.100/24"

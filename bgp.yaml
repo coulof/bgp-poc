@@ -1,0 +1,32 @@
+apiVersion: kubeovn.io/v1
+kind: BgpConf
+metadata:
+  name: default
+spec:
+  as: 65000
+  routerId: 172.16.1.100
+  listenPort: 179
+  listenAddresses:
+    - 172.16.1.100
+---
+apiVersion: kubeovn.io/v1
+kind: BgpPeer
+metadata:
+  name: router-01
+spec:
+  conf: default
+  neighborAddress: 172.16.1.1
+  peerAs: 65001
+  holdTime: 180
+  keepAliveTime: 60
+---
+apiVersion: kubeovn.io/v1
+kind: BgpPeer
+metadata:
+  name: router-02
+spec:
+  conf: default
+  neighborAddress: 172.16.1.2
+  peerAs: 65002
+  holdTime: 180
+  keepAliveTime: 60
