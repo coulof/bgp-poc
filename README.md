@@ -6,9 +6,9 @@
 
 This lab builds a 3-node BGP mesh:
 
-- **router-01** (VyOS, AS 65001) — eBGP peer to router-02 and Harvester
-- **router-02** (VyOS, AS 65002) — eBGP peer to router-01, learns Kube-OVN routes via router-01
-- **hv-01** (Harvester, Kube-OVN BGP speaker, AS 65000) — peers with router-01, advertises pod/service CIDRs
+- **router-01** (VyOS, AS 65001) - eBGP peer to router-02 and Harvester
+- **router-02** (VyOS, AS 65002) - eBGP peer to router-01, learns Kube-OVN routes via router-01
+- **hv-01** (Harvester, Kube-OVN BGP speaker, AS 65000) - peers with router-01, advertises pod/service CIDRs
 
 All nodes run as Hyper-V VMs with two NICs each: one for management (DHCP) and one for BGP peering (static).
 
@@ -39,22 +39,24 @@ All nodes run as Hyper-V VMs with two NICs each: one for management (DHCP) and o
 └─────────────────────────────────────────────────────────────┘
 ```
 
+![BGP sessions established on hv-01](VM-to-AS.png)
+
 ## 1. Hyper-V setup
 
 ### VM specifications
 
 | VM | vCPU | RAM | Disk | NIC 0 (eth0) | NIC 1 (eth1) |
 |---|---|---|---|---|---|
-| router-01 | 1 | 1–2 GB | 10–20 GB | Local-Switch (DHCP) | BGP-Switch (eth1 vif 100 — 172.16.1.1/24) |
-| router-02 | 1 | 1–2 GB | 10–20 GB | Local-Switch (DHCP) | BGP-Switch (eth1 vif 100 — 172.16.1.2/24) |
-| hv-01 | per cluster req. | per cluster req. | per cluster req. | Local-Switch (DHCP) | BGP-Switch (eth2 — VLAN 100 — 172.16.1.100/24) |
+| router-01 | 1 | 1–2 GB | 10–20 GB | Local-Switch (DHCP) | BGP-Switch (eth1 vif 100, 172.16.1.1/24) |
+| router-02 | 1 | 1–2 GB | 10–20 GB | Local-Switch (DHCP) | BGP-Switch (eth1 vif 100, 172.16.1.2/24) |
+| hv-01 | per cluster req. | per cluster req. | per cluster req. | Local-Switch (DHCP) | BGP-Switch (eth2, VLAN 100, 172.16.1.100/24) |
 
 ### Virtual switches
 
 Create two Hyper-V virtual switches:
 
-1. **Local-Switch** — `192.168.x.x/24`, DHCP, used for SSH management access.
-2. **BGP-Switch** — `172.16.1.0/24`, VLAN 100 tagged, dedicated to BGP peering traffic. Do **not** set access-mode VLAN on individual VM ports — all endpoints handle 802.1Q tagging natively.
+1. **Local-Switch** - `192.168.x.x/24`, DHCP, used for SSH management access.
+2. **BGP-Switch** - `172.16.1.0/24`, VLAN 100 tagged, dedicated to BGP peering traffic. Do **not** set access-mode VLAN on individual VM ports - all endpoints handle 802.1Q tagging natively.
 
 Attach both switches to every VM.
 
@@ -82,7 +84,7 @@ Get-VMNetworkAdapterVlan -VMName * | Format-Table VMName, ParentAdapter, Operati
 
 ## 2. VyOS configuration
 
-> **Important**: The syntax below targets **VyOS 1.4.x (sagitta) and current**. The global AS is declared with `set protocols bgp system-as <ASN>` — there is no ASN in the tree path. `local-as` is a per-neighbor AS override for migration scenarios, not the global AS declaration. There is no `activate` keyword — address-family is enabled by declaring it under the neighbor.
+> **Important**: The syntax below targets **VyOS 1.4.x (sagitta) and current**. The global AS is declared with `set protocols bgp system-as <ASN>` - there is no ASN in the tree path. `local-as` is a per-neighbor AS override for migration scenarios, not the global AS declaration. There is no `activate` keyword - address-family is enabled by declaring it under the neighbor.
 
 ### 2.1 Base networking
 
@@ -120,7 +122,7 @@ exit
 
 ### 2.2 BGP peering
 
-**Router1 (AS 65001)** — peers with Router2 AND Harvester:
+**Router1 (AS 65001)** - peers with Router2 AND Harvester:
 
 ```bash
 configure
@@ -146,7 +148,7 @@ save
 exit
 ```
 
-**Router2 (AS 65002)** — peers with Router1 AND Harvester:
+**Router2 (AS 65002)** - peers with Router1 (Harvester peer config included; requires a second speaker instance to establish):
 
 ```bash
 configure
@@ -232,7 +234,7 @@ kubectl label nodes hv-01 ovn.kubernetes.io/bgp=true
 
 ### 3.3 Deploy `kube-ovn-speaker` DaemonSet
 
-The `BgpConf`/`BgpPeer` CRDs are not available in Harvester's bundled Kube-OVN v1.15.4. Use the `kube-ovn-speaker` DaemonSet instead — BGP peers are configured via container args. The upstream reference manifest is at [kubeovn/kube-ovn release-1.15 speaker.yaml](https://raw.githubusercontent.com/kubeovn/kube-ovn/release-1.15/yamls/speaker.yaml).
+The `BgpConf`/`BgpPeer` CRDs are not available in Harvester's bundled Kube-OVN v1.15.4. Use the `kube-ovn-speaker` DaemonSet instead - BGP peers are configured via container args. The upstream reference manifest is at [kubeovn/kube-ovn release-1.15 speaker.yaml](https://raw.githubusercontent.com/kubeovn/kube-ovn/release-1.15/yamls/speaker.yaml).
 
 ```yaml
 kind: DaemonSet
@@ -344,15 +346,15 @@ Expected advertised prefixes:
 
 | Prefix | Source |
 |---|---|
-| `10.54.0.0/16` | Pod CIDR — `ovn-default` subnet |
-| `10.96.0.0/12` (default) | Service CIDR — join subnet |
+| `10.54.0.0/16` | Pod CIDR - `ovn-default` subnet |
+| `10.96.0.0/12` (default) | Service CIDR - join subnet |
 | Custom VPC CIDRs | Any VPC subnets with BGP annotation |
 
-### 3.6 Harvester networking — BGP interface setup
+### 3.6 Harvester networking - BGP interface setup
 
 This section is a dependency for the speaker. Complete all steps before deploying the DaemonSet.
 
-#### Step 1 — Hyper-V prerequisites (Windows host)
+#### Step 1 - Hyper-V prerequisites (Windows host)
 
 ```powershell
 # Verify BGP-Switch exists and hv-01 has an adapter on it
@@ -368,7 +370,7 @@ Get-VMNetworkAdapter -VMName "hv-01" | Select-Object Name, MacAddressSpoofing
 # Get-VMNetworkAdapter -VMName "hv-01" | Where-Object { $_.SwitchName -eq "BGP-Switch" } | Set-VMNetworkAdapter -MacAddressSpoofing On
 ```
 
-#### Step 2 — ClusterNetwork + VlanConfig
+#### Step 2 - ClusterNetwork + VlanConfig
 
 Harvester needs a named `ClusterNetwork` to represent the physical NIC (`eth2`) and a `VlanConfig` to bind it as the uplink. These are in `clusternetwork.yaml` and `vlanconfig.yaml`:
 
@@ -386,7 +388,7 @@ Harvester creates the following network stack on top of `eth2` once the VlanConf
 eth2 (slave) → bgp-bo (bond) → bgp-br (bridge)
 ```
 
-#### Step 3 — HostNetworkConfig (static IP assignment)
+#### Step 3 - HostNetworkConfig (static IP assignment)
 
 `hnc.yaml` assigns `172.16.1.100/24` on VLAN 100 via the `HostNetworkConfig` CRD. This is cluster-managed and survives reboots.
 
@@ -397,12 +399,12 @@ kubectl apply -f hnc.yaml
 kubectl get hostnetworkconfig bgp-peering -o yaml   # check status.networkStatus
 ```
 
-#### Step 4 — Verify L3 connectivity
+#### Step 4 - Verify L3 connectivity
 
 **Blocker**: Do not proceed to section 3.2 until all pings succeed.
 
 ```bash
-# On hv-01 — confirm IP is on the bridge
+# On hv-01 - confirm IP is on the bridge
 ip addr show bgp-br
 # Expected: inet 172.16.1.100/24
 
@@ -410,7 +412,7 @@ ip addr show bgp-br
 ping -c3 172.16.1.1   # router-01
 ping -c3 172.16.1.2   # router-02
 
-# From each VyOS router — verify reverse reachability
+# From each VyOS router - verify reverse reachability
 ping 172.16.1.100
 ```
 
@@ -485,9 +487,9 @@ The [rrajendran17/KubeOVN-BGP](https://github.com/rrajendran17/KubeOVN-BGP) proj
 | Symptom | Investigation |
 |---|---|
 | BGP session stuck in `Idle` | Check IP reachability (`ping`), port 179 (`tcpdump -i eth1.100 port 179`), AS number mismatch, firewall rules |
-| Session `Active` but not `Established` | Usually a TCP connection issue — check `update-source` matches the local eth1 IP |
+| Session `Active` but not `Established` | Usually a TCP connection issue - check `update-source` matches the local eth1 IP |
 | No routes from Kube-OVN | Verify speaker pod is running (`kubectl -n kube-system get pods -l app=kube-ovn-speaker`), check logs, verify subnet annotation `ovn.kubernetes.io/bgp=true` |
 | Routes on Router1 but not Router2 | Missing eBGP peering between Router2 and Harvester, or eBGP next-hop issue between routers |
 | Pod IP unreachable from router | Check Kube-OVN OVS flows, verify the logical router has a route back to 172.16.1.0/24 |
-| Harvester node IP unreachable | Verify `HostNetworkConfig` status — `kubectl get hostnetworkconfig bgp-peering -o yaml` |
+| Harvester node IP unreachable | Verify `HostNetworkConfig` status - `kubectl get hostnetworkconfig bgp-peering -o yaml` |
 | Kube-OVN controller crash-looping | `kubectl -n kube-system logs -l app=kube-ovn-controller --previous` |
